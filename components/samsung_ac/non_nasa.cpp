@@ -234,6 +234,29 @@ namespace esphome
             return request.encode();
         }
 
+        NonNasaFanspeed fanmode_to_nonnasa_fanspeed(FanMode value)
+        {
+            switch (value)
+            {
+            case FanMode::Hight:
+                return NonNasaFanspeed::High;
+            case FanMode::Mid:
+                return NonNasaFanspeed::Medium;
+            case FanMode::Low:
+                return NonNasaFanspeed::Low;
+            case FanMode::Auto:
+            default:
+                return NonNasaFanspeed::Auto;
+            }
+        }
+
+        std::vector<uint8_t> NonNasaProtocol::get_fanmode_message(const std::string &address, FanMode value)
+        {
+            auto request = packet.toRequest();
+            request.fanspeed = fanmode_to_nonnasa_fanspeed(value);
+            return request.encode();
+        }
+
         Mode nonnasa_mode_to_mode(NonNasaMode value)
         {
             switch (value)
@@ -254,6 +277,23 @@ namespace esphome
             }
         }
 
+        FanMode nonnasa_fanspeed_to_fanmode(NonNasaFanspeed fanspeed)
+        {
+            switch (fanspeed)
+            {
+            case NonNasaFanspeed::Fresh:
+            case NonNasaFanspeed::High:
+                return FanMode::Hight;
+            case NonNasaFanspeed::Medium:
+                return FanMode::Mid;
+            case NonNasaFanspeed::Low:
+                return FanMode::Low;
+            default:
+            case NonNasaFanspeed::Auto:
+                return FanMode::Auto;
+            }
+        }
+
         void process_non_nasa_message(std::vector<uint8_t> data, MessageTarget *target)
         {
             if (!packet.decode(data))
@@ -264,6 +304,7 @@ namespace esphome
             target->set_room_temperature(packet.src, packet.room_temp);
             target->set_power(packet.src, packet.power);
             target->set_mode(packet.src, nonnasa_mode_to_mode(packet.mode));
+            target->set_fanmode(packet.src, nonnasa_fanspeed_to_fanmode(packet.fanspeed));
         }
     } // namespace samsung_ac
 } // namespace esphome
