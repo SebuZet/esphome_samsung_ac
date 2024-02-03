@@ -30,13 +30,12 @@ namespace esphome
             BroadcastSelfLayer = 0xB0,
             BroadcastControlLayer = 0xB1,
             BroadcastSetLayer = 0xB2,
-            BoradcastCS = 0xB3,
             BroadcastControlAndSetLayer = 0xB3,
             BroadcastModuleLayer = 0xB4,
-            BoradcastCSM = 0xB7,
+            BroadcastCSM = 0xB7,
             BroadcastLocalLayer = 0xB8,
             BroadcastCSML = 0xBF,
-            Undefiend = 0xFF,
+            Undefined = 0xFF,
         };
 
         enum class PacketType : uint8_t
@@ -123,7 +122,7 @@ namespace esphome
             MessageSetType type = Enum;
             union
             {
-                int value;
+                long value;
                 Buffer structure;
             };
             uint16_t size = 2;
@@ -152,22 +151,23 @@ namespace esphome
             static Packet create(Address da, DataType dataType, MessageNumber messageNumber, int value);
             static Packet createa_partial(Address da, DataType dataType);
 
-            bool decode(std::vector<uint8_t> &data);
+            DecodeResult decode(std::vector<uint8_t> &data);
             std::vector<uint8_t> encode();
             std::string to_string();
         };
 
-        void process_nasa_message(std::vector<uint8_t> data, MessageTarget *target);
+        DecodeResult try_decode_nasa_packet(std::vector<uint8_t> data);
+        void process_nasa_packet(MessageTarget *target);
 
         class NasaProtocol : public Protocol
         {
         public:
             NasaProtocol() = default;
 
-            std::vector<uint8_t> get_power_message(const std::string &address, bool value) override;
-            std::vector<uint8_t> get_target_temp_message(const std::string &address, float value) override;
-            std::vector<uint8_t> get_mode_message(const std::string &address, Mode value) override;
-            std::vector<uint8_t> get_fanmode_message(const std::string &address, FanMode value) override;
+            void publish_power_message(MessageTarget *target, const std::string &address, bool value) override;
+            void publish_target_temp_message(MessageTarget *target, const std::string &address, float value) override;
+            void publish_mode_message(MessageTarget *target, const std::string &address, Mode value) override;
+            void publish_fanmode_message(MessageTarget *target, const std::string &address, FanMode value) override;
         };
 
     } // namespace samsung_ac

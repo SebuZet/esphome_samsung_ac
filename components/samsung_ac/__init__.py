@@ -11,6 +11,7 @@ from esphome.const import (
     UNIT_CELSIUS,
     UNIT_PERCENT,
 )
+from esphome.core import CORE
 
 CODEOWNERS = ["matthias882", "lanwin"]
 DEPENDENCIES = ["uart"]
@@ -30,22 +31,8 @@ Samsung_AC_Mode_Select = samsung_ac.class_(
 Samsung_AC_Number = samsung_ac.class_("Samsung_AC_Number", number.Number)
 Samsung_AC_Climate = samsung_ac.class_("Samsung_AC_Climate", climate.Climate)
 
-CONF_DATALINE_DEBUG = "dataline_debug"
-
-CONF_DEVICE_ID = "samsung_ac_device_id"
-CONF_DEVICE_ADDRESS = "address"
-CONF_DEVICE_ROOM_TEMPERATURE = "room_temperature"
-CONF_DEVICE_ROOM_HUMIDITY = "room_humidity"
-CONF_DEVICE_TARGET_TEMPERATURE = "target_temperature"
-CONF_DEVICE_POWER = "power"
-CONF_DEVICE_MODE = "mode"
-CONF_DEVICE_CLIMATE = "climate"
-
 # not sure why select.select_schema did not work yet
-SELECT_MODE_SCHEMA = (
-    select.SELECT_SCHEMA.extend(
-        {cv.GenerateID(): cv.declare_id(Samsung_AC_Mode_Select)})
-)
+SELECT_MODE_SCHEMA = select.select_schema(Samsung_AC_Mode_Select)
 
 NUMBER_SCHEMA = (
     number.NUMBER_SCHEMA.extend(
@@ -56,6 +43,15 @@ CLIMATE_SCHEMA = (
     climate.CLIMATE_SCHEMA.extend(
         {cv.GenerateID(): cv.declare_id(Samsung_AC_Climate)})
 )
+
+CONF_DEVICE_ID = "samsung_ac_device_id"
+CONF_DEVICE_ADDRESS = "address"
+CONF_DEVICE_ROOM_TEMPERATURE = "room_temperature"
+CONF_DEVICE_ROOM_HUMIDITY = "room_humidity"
+CONF_DEVICE_TARGET_TEMPERATURE = "target_temperature"
+CONF_DEVICE_POWER = "power"
+CONF_DEVICE_MODE = "mode"
+CONF_DEVICE_CLIMATE = "climate"
 
 DEVICE_SCHEMA = (
     cv.Schema(
@@ -84,11 +80,25 @@ DEVICE_SCHEMA = (
 
 CONF_DEVICES = "devices"
 
+CONF_DEBUG_MQTT_HOST = "debug_mqtt_host"
+CONF_DEBUG_MQTT_PORT = "debug_mqtt_port"
+CONF_DEBUG_MQTT_USERNAME = "debug_mqtt_username"
+CONF_DEBUG_MQTT_PASSWORD = "debug_mqtt_password"
+
+CONF_DEBUG_LOG_MESSAGES = "debug_log_messages"
+CONF_DEBUG_LOG_MESSAGES_RAW = "debug_log_messages_raw"
+
 CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(Samsung_AC),
-            cv.Optional(CONF_DATALINE_DEBUG, default=False): cv.boolean,
+            # cv.Optional(CONF_PAUSE, default=False): cv.boolean,
+            cv.Optional(CONF_DEBUG_MQTT_HOST, default=""): cv.string,
+            cv.Optional(CONF_DEBUG_MQTT_PORT, default=1883): cv.int_,
+            cv.Optional(CONF_DEBUG_MQTT_USERNAME, default=""): cv.string,
+            cv.Optional(CONF_DEBUG_MQTT_PASSWORD, default=""): cv.string,
+            cv.Optional(CONF_DEBUG_LOG_MESSAGES, default=False): cv.boolean,
+            cv.Optional(CONF_DEBUG_LOG_MESSAGES_RAW, default=False): cv.boolean,
             cv.Required(CONF_DEVICES): cv.ensure_list(DEVICE_SCHEMA),
         }
     )
@@ -98,6 +108,10 @@ CONFIG_SCHEMA = (
 
 
 async def to_code(config):
+    # For Debug_MQTT
+    if CORE.is_esp8266 or CORE.is_libretiny:
+        cg.add_library("heman/AsyncMqttClient-esphome", "2.0.0")
+
     var = cg.new_Pvariable(config[CONF_ID])
     for device_index, device in enumerate(config[CONF_DEVICES]):
         var_dev = cg.new_Pvariable(
@@ -132,7 +146,6 @@ async def to_code(config):
             conf = device[CONF_DEVICE_MODE]
             values = ["Auto", "Cool", "Dry", "Fan", "Heat"]
             sel = await select.new_select(conf, options=values)
-            await select.register_select(sel, conf, options=values)
             cg.add(var_dev.set_mode_select(sel))
 
         if CONF_DEVICE_CLIMATE in device:
@@ -143,6 +156,15 @@ async def to_code(config):
 
         cg.add(var.register_device(var_dev))
 
+    cg.add(var.set_debug_mqtt(config[CONF_DEBUG_MQTT_HOST], config[CONF_DEBUG_MQTT_PORT],
+           config[CONF_DEBUG_MQTT_USERNAME], config[CONF_DEBUG_MQTT_PASSWORD]))
+
+    if (CONF_DEBUG_LOG_MESSAGES in config):
+        cg.add(var.set_debug_log_messages(config[CONF_DEBUG_LOG_MESSAGES]))
+
+    if (CONF_DEBUG_LOG_MESSAGES_RAW in config):
+        cg.add(var.set_debug_log_messages_raw(
+            config[CONF_DEBUG_LOG_MESSAGES_RAW]))
+
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
-    cg.add(var.set_dataline_debug(config[CONF_DATALINE_DEBUG]))

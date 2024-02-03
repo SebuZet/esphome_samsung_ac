@@ -1,7 +1,5 @@
-#include <vector>
-#include <iostream>
-#include "../components/samsung_ac/util.h"
-#include "../components/samsung_ac/nasa.h"
+#include "test_stuff.h"
+#include "../components/samsung_ac/protocol_nasa.h"
 
 using namespace std;
 using namespace esphome::samsung_ac;
@@ -40,8 +38,15 @@ void test_nasa_2()
     std::cout << "32001280ff00200002c013f201420101186e5434 expected" << std::endl;
 }
 
+void test_process_data()
+{
+}
+
+//
+
 int main(int argc, char *argv[])
 {
     test_nasa_1();
     test_nasa_2();
+    test_process_data();
 };

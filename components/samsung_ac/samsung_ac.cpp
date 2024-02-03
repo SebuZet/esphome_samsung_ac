@@ -1,5 +1,6 @@
 #include "esphome/core/log.h"
 #include "samsung_ac.h"
+#include "debug_mqtt.h"
 #include "util.h"
 #include <vector>
 
@@ -7,20 +8,28 @@ namespace esphome
 {
   namespace samsung_ac
   {
-    static const char *TAG = "samsung_ac";
-
     void Samsung_AC::setup()
     {
+      ESP_LOGW(TAG, "setup");
     }
 
     void Samsung_AC::update()
     {
       ESP_LOGW(TAG, "update");
 
-      std::string devices = "";
-      for (auto const &device : devices_)
+      debug_mqtt_connect(debug_mqtt_host, debug_mqtt_port, debug_mqtt_username, debug_mqtt_password);
+
+      // Waiting for first update before beginning processing data
+      if (data_processing_init)
       {
-        devices += devices.length() > 0 ? ", " + device->address : device->address;
+        ESP_LOGCONFIG(TAG, "Data Processing starting");
+        data_processing_init = false;
+      }
+
+      std::string devices = "";
+      for (const auto &pair : devices_)
+      {
+        devices += devices.length() > 0 ? ", " + pair.second->address : pair.second->address;
       }
       ESP_LOGCONFIG(TAG, "Configured devices: %s", devices.c_str());
 
@@ -29,17 +38,17 @@ namespace esphome
       std::string knownOther = "";
       for (auto const &address : addresses_)
       {
-        if (address == "00" || address.rfind("10.", 0) == 0)
+        switch (get_address_type(address))
         {
+        case AddressType::Outdoor:
           knownOutdoor += knownOutdoor.length() > 0 ? ", " + address : address;
-        }
-        else if (!is_nasa_address(address) || address.rfind("20.", 0) == 0)
-        {
+          break;
+        case AddressType::Indoor:
           knownIndoor += knownIndoor.length() > 0 ? ", " + address : address;
-        }
-        else
-        {
+          break;
+        default:
           knownOther += knownOther.length() > 0 ? ", " + address : address;
+          break;
         }
       }
       ESP_LOGCONFIG(TAG, "Discovered devices:");
@@ -49,36 +58,49 @@ namespace esphome
         ESP_LOGCONFIG(TAG, "  Other:   %s", knownOther.c_str());
     }
 
-    void Samsung_AC::send_bus_message(std::vector<uint8_t> &data)
+    void Samsung_AC::register_device(Samsung_AC_Device *device)
     {
-      out_.insert(out_.end(), data.begin(), data.end());
+      if (find_device(device->address) != nullptr)
+      {
+        ESP_LOGW(TAG, "There is already and device for address %s registered.", device->address.c_str());
+        return;
+      }
+
+      devices_.insert({device->address, device});
     }
 
     void Samsung_AC::dump_config()
     {
-      ESP_LOGCONFIG(TAG, "Samsung_AC:");
-      ESP_LOGCONFIG(TAG, "dataline debug enabled?: %s", this->dataline_debug_ ? "true" : "false");
-      this->check_uart_settings(9600, 1, uart::UART_CONFIG_PARITY_EVEN, 8);
+    }
+
+    void Samsung_AC::publish_data(std::vector<uint8_t> &data)
+    {
+      this->write_array(data);
+      this->flush();
     }
 
     void Samsung_AC::loop()
     {
+      if (data_processing_init)
+        return;
+
       const uint32_t now = millis();
-      if (receiving_ && (now - last_transmission_ >= 500))
+      if (data_.size() > 0 && (now - last_transmission_ >= 500))
       {
         ESP_LOGW(TAG, "Last transmission too long ago. Reset RX index.");
         data_.clear();
-        receiving_ = false;
       }
 
+      // If there is no data we use the time to send
       if (!available())
       {
-        if (out_.size() > 0)
+        if (send_queue_.size() > 0)
         {
-          ESP_LOGW(TAG, "write %s", bytes_to_hex(out_).c_str());
-          this->write_array(out_);
+          auto senddata = send_queue_.front();
+          ESP_LOGW(TAG, "write %s", bytes_to_hex(senddata).c_str());
+          this->write_array(senddata);
           this->flush();
-          out_.clear();
+          send_queue_.pop();
         }
 
         return; // nothing in uart-input-buffer, end here
@@ -88,20 +110,17 @@ namespace esphome
       while (available())
       {
         uint8_t c;
-        read_byte(&c);
-        if (c == 0x32 && !receiving_) // start-byte found
-        {
-          receiving_ = true;
-          data_.clear();
-        }
-        if (receiving_)
-        {
-          data_.push_back(c);
-          if (c != 0x34)
-            continue; // endbyte not found
+        if (!read_byte(&c))
+          continue;
+        if (data_.size() == 0 && c != 0x32)
+          continue; // skip until start-byte found
 
-          receiving_ = false;
-          process_message(data_, this);
+        data_.push_back(c);
+
+        if (process_data(data_, this) == DataResult::Clear)
+        {
+          data_.clear();
+          break; // wait for next loop
         }
       }
     }

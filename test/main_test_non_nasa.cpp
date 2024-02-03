@@ -1,38 +1,8 @@
-#include <vector>
-#include <bitset>
-#include <iostream>
-#include <cassert>
-#include "../components/samsung_ac/util.h"
-#include "../components/samsung_ac/protocol.h"
-#include "../components/samsung_ac/non_nasa.h"
+#include "test_stuff.h"
+#include "../components/samsung_ac/protocol_non_nasa.h"
 
 using namespace std;
 using namespace esphome::samsung_ac;
-
-class DebugTarget : public MessageTarget
-{
-public:
-    void register_address(const std::string address)
-    {
-        cout << "register_address " << address << endl;
-    }
-    void set_power(const std::string address, bool value)
-    {
-        cout << "set_power " << address << " " << to_string(value) << endl;
-    }
-    void set_room_temperature(const std::string address, float value)
-    {
-        cout << "set_room_temperature " << address << " " << to_string(value) << endl;
-    }
-    void set_target_temperature(const std::string address, float value)
-    {
-        cout << "set_target_temperature " << address << " " << to_string(value) << endl;
-    }
-    void set_mode(const std::string address, Mode mode)
-    {
-        cout << "set_mode " << address << " " << to_string((int)mode) << endl;
-    }
-};
 
 std::vector<uint8_t> create(uint8_t src, uint8_t dst)
 {
@@ -100,7 +70,7 @@ NonNasaDataPacket test_decode(std::string data)
 {
     NonNasaDataPacket p;
     auto bytes = hex_to_bytes(data);
-    assert(p.decode(bytes) == true);
+    assert(p.decode(bytes) == DecodeResult::Ok);
     std::cout << p.to_string() << std::endl;
     return p;
 }
@@ -108,105 +78,217 @@ NonNasaDataPacket test_decode(std::string data)
 void test_decoding()
 {
     auto p = test_decode("3200c8204b504e000110004ee234");
-    assert(p.power == false);
-    assert(p.target_temp == 20);
-    assert(p.room_temp == 25);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::Auto);
-    assert(p.mode == NonNasaMode::Heat);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == false);
+    assert(p.command20.target_temp == 20);
+    assert(p.command20.room_temp == 25);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::Auto);
+    assert(p.command20.mode == NonNasaMode::Heat);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
 
     p = test_decode("3200c8204b4f4efd8110004e8034");
-    assert(p.power == true);
-    assert(p.target_temp == 20);
-    assert(p.room_temp == 24);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::High);
-    assert(p.mode == NonNasaMode::Heat);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == true);
+    assert(p.command20.target_temp == 20);
+    assert(p.command20.room_temp == 24);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::High);
+    assert(p.command20.mode == NonNasaMode::Heat);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
 
     p = test_decode("3200c8204b4f4efc8110004e8134");
-    assert(p.power == true);
-    assert(p.target_temp == 20);
-    assert(p.room_temp == 24);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::Medium);
-    assert(p.mode == NonNasaMode::Heat);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == true);
+    assert(p.command20.target_temp == 20);
+    assert(p.command20.room_temp == 24);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::Medium);
+    assert(p.command20.mode == NonNasaMode::Heat);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
 
     p = test_decode("3200c8204b4f4efa8110004e8734");
-    assert(p.power == true);
-    assert(p.target_temp == 20);
-    assert(p.room_temp == 24);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::Low);
-    assert(p.mode == NonNasaMode::Heat);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == true);
+    assert(p.command20.target_temp == 20);
+    assert(p.command20.room_temp == 24);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::Low);
+    assert(p.command20.mode == NonNasaMode::Heat);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
 
     p = test_decode("3200c8204f4f4ef8a21c004eae34");
-    assert(p.power == true);
-    assert(p.target_temp == 24);
-    assert(p.room_temp == 24);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::Auto);
-    assert(p.mode == NonNasaMode::Auto);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == true);
+    assert(p.command20.target_temp == 24);
+    assert(p.command20.room_temp == 24);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::Auto);
+    assert(p.command20.mode == NonNasaMode::Auto);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
 
     p = test_decode("3200c8204f4f4efd821c004e8b34");
-    assert(p.power == true);
-    assert(p.target_temp == 24);
-    assert(p.room_temp == 24);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::High);
-    assert(p.mode == NonNasaMode::Cool);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == true);
+    assert(p.command20.target_temp == 24);
+    assert(p.command20.room_temp == 24);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::High);
+    assert(p.command20.mode == NonNasaMode::Cool);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
 
     p = test_decode("3200c8204f4f4efd821c004e8b34");
-    assert(p.power == true);
-    assert(p.target_temp == 24);
-    assert(p.room_temp == 24);
-    assert(p.pipe_in == 23);
-    assert(p.pipe_out == 23);
-    assert(p.fanspeed == NonNasaFanspeed::High);
-    assert(p.mode == NonNasaMode::Cool);
-    assert(p.wind_direction == NonNasaWindDirection::Stop);
+    assert(p.command20.power == true);
+    assert(p.command20.target_temp == 24);
+    assert(p.command20.room_temp == 24);
+    assert(p.command20.pipe_in == 23);
+    assert(p.command20.pipe_out == 23);
+    assert(p.command20.fanspeed == NonNasaFanspeed::High);
+    assert(p.command20.mode == NonNasaMode::Cool);
+    assert(p.command20.wind_direction == NonNasaWindDirection::Stop);
+}
+
+NonNasaRequest create_request()
+{
+    NonNasaRequest p;
+    p.dst = "00";
+    p.power = false;
+    p.target_temp = 20;
+    p.fanspeed = NonNasaFanspeed::Auto;
+    p.mode = NonNasaMode::Auto;
+    return p;
+}
+
+void test_request(NonNasaRequest request, std::string expected)
+{
+    auto actual = bytes_to_hex(request.encode());
+    assert_str(actual, expected);
 }
 
 void test_encoding()
 {
-    NonNasaRequest p;
-    p.dst = "c8";
-    p.power = true;
-    p.target_temp = 24;
-    p.fanspeed = NonNasaFanspeed::Auto;
-    p.mode = NonNasaMode::Cool;
-    auto data = bytes_to_hex(p.encode());
-    std::cout << "expected: 3200c8204f4f4efd821c004e8b34" << std::endl;
-    std::cout << "actual:   " << data << std::endl;
-    assert(data == "32d0c8b01f04a601f4210000c134");
+    NonNasaRequest req;
+
+    req = create_request();
+    req.dst = "00";
+    req.power = true;
+    req.room_temp = 23;
+    req.target_temp = 24;
+    req.fanspeed = NonNasaFanspeed::Auto;
+    req.mode = NonNasaMode::Fan;
+    test_request(req, "32d000b01f171803f4210000a634");
+
+    req = create_request();
+    req.power = true;
+    test_request(req, "32d000b01f041400f4210000ba34");
+
+    req = create_request();
+    req.power = false;
+    test_request(req, "32d000b01f041400c42100008a34");
+
+    req = create_request();
+    req.fanspeed = NonNasaFanspeed::Auto;
+    test_request(req, "32d000b01f041400c42100008a34");
+    req = create_request();
+    req.fanspeed = NonNasaFanspeed::High;
+    test_request(req, "32d000b01f04b400c42100002a34");
+    req = create_request();
+    req.fanspeed = NonNasaFanspeed::Medium;
+    test_request(req, "32d000b01f049400c42100000a34");
+    req = create_request();
+    req.fanspeed = NonNasaFanspeed::Low;
+    test_request(req, "32d000b01f045400c4210000ca34");
+
+    req = create_request();
+    req.target_temp = 25;
+    test_request(req, "32d000b01f041900c42100008734");
+
+    req = create_request();
+    req.mode = NonNasaMode::Auto;
+    test_request(req, "32d000b01f041400c42100008a34");
+    req = create_request();
+    req.mode = NonNasaMode::Cool;
+    test_request(req, "32d000b01f041401c42100008b34");
+    req = create_request();
+    req.mode = NonNasaMode::Dry;
+    test_request(req, "32d000b01f041402c42100008834");
+    req = create_request();
+    req.mode = NonNasaMode::Fan;
+    test_request(req, "32d000b01f041403c42100008934");
+    req = create_request();
+    req.mode = NonNasaMode::Heat;
+    test_request(req, "32d000b01f041404c42100008e34");
 }
 
 void test_target()
 {
     DebugTarget target;
 
-    auto bytes = hex_to_bytes("3200c8204f4f4efd821c004e8b34");
-    process_non_nasa_message(bytes, &target);
+    target = test_process_data("32c8dec70101000000000000d134");
+    target.assert_only_address("c8");
+    target = test_process_data("32c8f0860100000000000008b734");
+    target.assert_only_address("c8");
+    target = test_process_data("32c8add1ff000000000000004b34");
+    target.assert_only_address("c8");
+    target = test_process_data("32c8008f00000000000000004734");
+    target.assert_only_address("c8");
+    target = test_process_data("32c800c0080000004b004d4b4d34");
+    target.assert_only_address("c8");
+    target = test_process_data("3200c8210300000600000000ec34");
+    target.assert_only_address("00");
+    target = test_process_data("3200c82f00f0010b010201051a34");
+    target.assert_only_address("00");
+    target = test_process_data("3200c84020000000408900402134");
+    target.assert_only_address("00");
 
-    // Todo:
+    target = test_process_data("3200c8204d51500001100051e434");
+    target.assert_values("00", false, 26.000000, 22.000000, Mode::Heat, FanMode::Auto);
+
+    target = test_process_data("3200c8204f4f4efd821c004e8b34");
+    target.assert_values("00", true, 24.000000, 24.000000, Mode::Cool, FanMode::Hight);
+}
+
+void test_previous_data_is_used_correctly()
+{
+    // Sending package 20 on non nasa requiers to send the previous values
+    // these values need to be stored for each address. This test makes sure
+    // this process works.
+    std::cout << "test_previous_data_is_used_correctly" << std::endl;
+
+    DebugTarget target;
+    auto bytes = hex_to_bytes("3200c8204d51500001100051e434");
+    assert(process_data(bytes, &target) == DataResult::Clear);
+
+    get_protocol("00")->publish_power_message(&target, "00", false);
+    NonNasaRequest request1;
+    request1.dst = "00";
+    request1.room_temp = 26.000000;
+    request1.target_temp = 22.000000;
+    request1.power = false;
+    request1.fanspeed = NonNasaFanspeed::Auto;
+    request1.mode = NonNasaMode::Heat;
+    assert_str(target.last_publish_data, bytes_to_hex(request1.encode()));
+
+    bytes = hex_to_bytes("3201c8204f4f4efd821c004e8a34");
+    assert(process_data(bytes, &target) == DataResult::Clear);
+
+    get_protocol("01")->publish_power_message(&target, "01", true);
+    NonNasaRequest request2;
+    request2.dst = "01";
+    request2.room_temp = 24.000000;
+    request2.target_temp = 24.000000;
+    request2.power = true;
+    request2.fanspeed = NonNasaFanspeed::High;
+    request2.mode = NonNasaMode::Cool;
+    assert_str(target.last_publish_data, bytes_to_hex(request2.encode()));
 }
 
 int main(int argc, char *argv[])
 {
+    // test_read_file();
     test_decoding();
     test_encoding();
     test_target();
-};
 
-// g++ *.cpp -o test.exe && test.exe
+    test_previous_data_is_used_correctly();
+};

@@ -1,33 +1,15 @@
 #include <windows.h>
 
-#include <vector>
-#include <iostream>
-#include "../components/samsung_ac/nasa.h"
+#include "test_stuff.h"
+#include "../components/samsung_ac/protocol_nasa.h"
 
 using namespace std;
 using namespace esphome::samsung_ac;
 
-class DebugTarget : public MessageTarget
-{
-public:
-    void register_address(const std::string address)
-    {
-        // cout << "register_address " << address << endl;
-    }
-    void set_power(const std::string address, bool value)
-    {
-        cout << "set_power " << address << " " << to_string(value) << endl;
-    }
-    void set_room_temperature(const std::string address, float value)
-    {
-        cout << "set_room_temperature " << address << " " << to_string(value) << endl;
-    }
-};
-
 void process_data(std::vector<uint8_t> &data)
 {
     Packet packet;
-    if (!packet.decode(data))
+    if (packet.decode(data) != DecodeResult::Ok)
         return;
 
     if (packet.sa.to_string() != "20.00.02" &&
@@ -39,24 +21,7 @@ void process_data(std::vector<uint8_t> &data)
 
     cout << packet.to_string() << endl;
 }
-/*
-std::string int_to_hex(int number)
-{
-    char str[3];
-    sprintf(str, "%02x", number);
-    return str;
-}
 
-std::string bytes_to_hex(const std::vector<uint8_t> &data)
-{
-    std::string str;
-    for (int i = 0; i < data.size(); i++)
-    {
-        str += int_to_hex(data[i]);
-    }
-    return str;
-}
-*/
 int main(int argc, char *argv[])
 {
     HANDLE hComm = CreateFileA("COM5", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <set>
+#include <map>
 #include <optional>
+#include <queue>
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "samsung_ac_device.h"
@@ -27,17 +29,37 @@ namespace esphome
       void loop() override;
       void dump_config() override;
 
-      void register_address(const std::string address) override
+      void set_debug_mqtt(std::string host, int port, std::string username, std::string password)
+      {
+        debug_mqtt_host = host;
+        debug_mqtt_port = port;
+        debug_mqtt_username = username;
+        debug_mqtt_password = password;
+      }
+
+      void set_debug_log_messages(bool value)
+      {
+        debug_log_packets = value;
+      }
+
+      void set_debug_log_messages_raw(bool value)
+      {
+        debug_log_raw_bytes = value;
+      }
+
+      void register_device(Samsung_AC_Device *device);
+
+      void /*MessageTarget::*/ register_address(const std::string address) override
       {
         addresses_.insert(address);
       }
 
-      void set_dataline_debug(bool dataline_debug) { dataline_debug_ = dataline_debug; };
-
-      void /*MessageTarget::*/ register_device(Samsung_AC_Device *device)
+      uint32_t /*MessageTarget::*/ get_miliseconds()
       {
-        devices_.push_back(device);
+        return millis();
       }
+
+      void /*MessageTarget::*/ publish_data(std::vector<uint8_t> &data);
 
       void /*MessageTarget::*/ set_room_temperature(const std::string address, float value) override
       {
@@ -81,30 +103,31 @@ namespace esphome
           dev->publish_fanmode(fanmode);
       }
 
-      void send_bus_message(std::vector<uint8_t> &data);
-
     protected:
       Samsung_AC_Device *find_device(const std::string address)
       {
-        for (int i = 0; i < devices_.size(); i++)
+        auto it = devices_.find(address);
+        if (it != devices_.end())
         {
-          Samsung_AC_Device *dev = devices_[i];
-          if (dev->address == address)
-            return dev;
+          return it->second;
         }
         return nullptr;
       }
 
-      std::vector<Samsung_AC_Device *> devices_;
+      std::map<std::string, Samsung_AC_Device *> devices_;
       std::set<std::string> addresses_;
 
-      std::vector<uint8_t> out_;
+      std::queue<std::vector<uint8_t>> send_queue_;
       std::vector<uint8_t> data_;
-      bool receiving_{false};
       uint32_t last_transmission_{0};
 
+      bool data_processing_init = true;
+
       // settings from yaml
-      bool dataline_debug_{false};
+      std::string debug_mqtt_host = "";
+      uint16_t debug_mqtt_port = 1883;
+      std::string debug_mqtt_username = "";
+      std::string debug_mqtt_password = "";
     };
 
   } // namespace samsung_ac
